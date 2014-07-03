@@ -14,6 +14,7 @@ namespace Assetic\Factory\Worker;
 use Assetic\Asset\AssetCollectionInterface;
 use Assetic\Asset\AssetInterface;
 use Assetic\Factory\AssetFactory;
+use Assetic\ValueSupplierInterface;
 use Assetic\Factory\LazyAssetManager;
 
 /**
@@ -24,10 +25,12 @@ use Assetic\Factory\LazyAssetManager;
 class CacheBustingWorker implements WorkerInterface
 {
     private $separator;
+    private $valueSupplier;
 
-    public function __construct($separator = '-')
+    public function __construct($separator = '-', ValueSupplierInterface $valueSupplier = null)
     {
         $this->separator = $separator;
+        $this->valueSupplier = $valueSupplier;
     }
 
     public function process(AssetInterface $asset, AssetFactory $factory)
@@ -56,6 +59,17 @@ class CacheBustingWorker implements WorkerInterface
     protected function getHash(AssetInterface $asset, AssetFactory $factory)
     {
         $hash = hash_init('sha1');
+
+        $vars = $asset->getVars();
+        if ($asset->getVars() && $this->valueSupplier) {
+            $values = array();
+            foreach ($this->valueSupplier->getValues() as $key => $value) {
+                if (in_array($key, $vars)) {
+                    $values[$key] = $value;
+                }
+            }
+            $asset->setValues($values);
+        }
 
         hash_update($hash, $factory->getLastModified($asset));
 
